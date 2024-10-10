@@ -1,8 +1,9 @@
 using System;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
-namespace EndlessRunner
+namespace EndlessRunner.Player
 {
     [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
@@ -13,6 +14,7 @@ namespace EndlessRunner
         [SerializeField] private float _jumpHeight = 1.0f;
         [SerializeField] private float _initialGravityValue = -9.81f;
         [SerializeField] private LayerMask _groundLayer;
+        [SerializeField] private LayerMask _turnLayer;
 
         private float _playerSpeed;
         private float _gravity;
@@ -25,6 +27,8 @@ namespace EndlessRunner
         private InputAction _jumpAction;
 
         private CharacterController _controller;
+        
+        [SerializeField] private UnityEvent<Vector3> _turnEvent;
 
         private void Awake()
         {
@@ -33,7 +37,6 @@ namespace EndlessRunner
             _turnAction = _playerInput.actions["Turn"];
             _slideAction = _playerInput.actions["Slide"];
             _jumpAction = _playerInput.actions["Jump"];
-            _gravity = _initialGravityValue;
         }
 
         private void OnEnable()
@@ -71,7 +74,43 @@ namespace EndlessRunner
 
         private void PlayerTurn(InputAction.CallbackContext context)
         {
+            Vector3? turnPosition = CheckTurn(context.ReadValue<float>());
+            if (!turnPosition.HasValue)
+            {
+                return;
+            }
+            Vector3 targetDirection = Quaternion.AngleAxis(90 * context.ReadValue<float>(), Vector3.up) * _movementDirection;
+            _turnEvent?.Invoke(targetDirection);
+            Turn(context.ReadValue<float>(), turnPosition.Value);
+        }
+
+        private void Turn(float turnValue, Vector3 turnPosition)
+        {
+            Vector3 tempPlayerPosition = new Vector3(turnPosition.x, transform.position.y, turnPosition.z);
+            _controller.enabled = false;
+            transform.position = tempPlayerPosition;
+            _controller.enabled = true;
             
+            Quaternion targetRotation = transform.rotation * Quaternion.Euler(0, 90 * turnValue, 0);
+            transform.rotation = targetRotation;
+            _movementDirection = transform.forward.normalized;
+        }
+
+        private Vector3? CheckTurn(float turnValue)
+        {
+            Collider[] hitColliders = Physics.OverlapSphere(transform.position, .1f, _turnLayer);
+            if (hitColliders.Length != 0)
+            {
+                Tile tile = hitColliders[0].transform.parent.GetComponent<Tile>();
+                TileType type = tile.type;
+                if ((type == TileType.LEFT && turnValue == -1)
+                    || (type == TileType.RIGHT && turnValue == 1)
+                    || (type == TileType.SIDEWAYS))
+                {
+                    return tile.pivot.position;
+                }
+            }
+            return null;
         }
 
         private void PlayerSlide(InputAction.CallbackContext context)

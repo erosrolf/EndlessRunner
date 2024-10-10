@@ -81,8 +81,7 @@ namespace EndlessRunner
             }
 
             SpawnTile(SelectRandomGemaObjectFromList(_turnTiles).GetComponent<Tile>(), false);
-            SpawnTile(_turnTiles[0].GetComponent<Tile>());
-            AddNewDirection(Vector3.left);
+            //SpawnTile(_turnTiles[0].GetComponent<Tile>());
         }
 
         private GameObject SelectRandomGemaObjectFromList(List<GameObject> list)
