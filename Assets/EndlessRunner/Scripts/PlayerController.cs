@@ -1,11 +1,12 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
 namespace EndlessRunner.Player
 {
-    [RequireComponent(typeof(CharacterController))]
+    [RequireComponent(typeof(CharacterController), typeof(PlayerInput))]
     public class PlayerController : MonoBehaviour
     {
         [SerializeField] private float _initialPlayerSpeed = 4f;
@@ -15,12 +16,15 @@ namespace EndlessRunner.Player
         [SerializeField] private float _initialGravityValue = -9.81f;
         [SerializeField] private LayerMask _groundLayer;
         [SerializeField] private LayerMask _turnLayer;
-
+        [SerializeField] private AnimationClip _slideAnimationClip;
+        [SerializeField] private Animator _animator;
+        
         private float _playerSpeed;
         private float _gravity;
         private Vector3 _movementDirection = Vector3.forward;
         private Vector3 _playerVelocity;
-
+        private int _slidingAnimationId;
+        
         private PlayerInput _playerInput;
         private InputAction _turnAction;
         private InputAction _slideAction;
@@ -29,11 +33,15 @@ namespace EndlessRunner.Player
         private CharacterController _controller;
         
         [SerializeField] private UnityEvent<Vector3> _turnEvent;
+        private bool _sliding;
 
         private void Awake()
         {
             _playerInput = GetComponent<PlayerInput>();
             _controller = GetComponent<CharacterController>();
+
+            _slidingAnimationId = Animator.StringToHash("Sliding");
+            
             _turnAction = _playerInput.actions["Turn"];
             _slideAction = _playerInput.actions["Slide"];
             _jumpAction = _playerInput.actions["Jump"];
@@ -115,7 +123,26 @@ namespace EndlessRunner.Player
 
         private void PlayerSlide(InputAction.CallbackContext context)
         {
-            
+            if (_sliding || !IsGrounded()) return;
+            StartCoroutine(Slide());
+        }
+
+        private IEnumerator Slide()
+        {
+            _sliding = true;
+            // Shrink the collider
+            Vector3 originalControllerCenter = _controller.center;
+            Vector3 newControllerCenter = originalControllerCenter;
+            _controller.height /= 2;
+            newControllerCenter.y -= _controller.height / 2;
+            _controller.center = newControllerCenter;
+            // Play the sliding animation
+            _animator.Play(_slidingAnimationId);
+            yield return new WaitForSeconds(_slideAnimationClip.length);
+            // Set the character controller collider back to normal after sliding
+            _controller.height *= 2;
+            _controller.center = originalControllerCenter;
+            _sliding = false;
         }
         
         private void PlayerJump(InputAction.CallbackContext context)
@@ -138,8 +165,8 @@ namespace EndlessRunner.Player
             raycastOriginFirst -= transform.forward * .2f;
             raycastOriginSecond += transform.forward * .2f;
             
-            Debug.DrawLine(raycastOriginFirst, Vector3.down, Color.green, 2f);
-            Debug.DrawLine(raycastOriginSecond, Vector3.down, Color.red, 2f);
+            // Debug.DrawLine(raycastOriginFirst, Vector3.down, Color.green, 2f);
+            // Debug.DrawLine(raycastOriginSecond, Vector3.down, Color.red, 2f);
             
             if (Physics.Raycast(raycastOriginFirst, Vector3.down, out RaycastHit hit, length, _groundLayer)
                 || Physics.Raycast(raycastOriginSecond, Vector3.down, out RaycastHit hit2, length, _groundLayer))

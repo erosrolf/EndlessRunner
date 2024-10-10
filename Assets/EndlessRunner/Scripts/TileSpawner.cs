@@ -14,6 +14,7 @@ namespace EndlessRunner
         [SerializeField] private GameObject _startingTile;
         [SerializeField] private List<GameObject> _turnTiles;
         [SerializeField] private List<GameObject> _obstacles;
+        [SerializeField] private bool _withObstacles;
 
         private Vector3 _currentTileLocation = Vector3.zero;
         private Vector3 _currentTileDirection = Vector3.forward;
@@ -92,6 +93,7 @@ namespace EndlessRunner
 
         private void SpawnObstacle()
         {
+            if (_withObstacles == false) return;
             if (Random.value > 0.2f) return;
 
             GameObject obstaclePrefab = SelectRandomGemaObjectFromList(_obstacles);
