@@ -117,7 +117,7 @@ namespace EndlessRunner
             while (_currentObstacles.Count > 0)
             {
                 GameObject obstacle = _currentObstacles[0];
-                _currentTiles.RemoveAt(0);
+                _currentObstacles.RemoveAt(0);
                 Destroy(obstacle);
             }
         }

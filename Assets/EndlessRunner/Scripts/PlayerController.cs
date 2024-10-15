@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
@@ -15,25 +16,30 @@ namespace EndlessRunner.Player
         [SerializeField] private float _jumpHeight = 1.0f;
         [SerializeField] private float _initialGravityValue = -9.81f;
         [SerializeField] private LayerMask _groundLayer;
+        [SerializeField] private LayerMask _obstacleLayer;
         [SerializeField] private LayerMask _turnLayer;
         [SerializeField] private AnimationClip _slideAnimationClip;
         [SerializeField] private Animator _animator;
+        [SerializeField] private float _scoreMultiplier = 10f;
         
         private float _playerSpeed;
         private float _gravity;
         private Vector3 _movementDirection = Vector3.forward;
         private Vector3 _playerVelocity;
         private int _slidingAnimationId;
+        private float _score = 0;
         
         private PlayerInput _playerInput;
         private InputAction _turnAction;
         private InputAction _slideAction;
         private InputAction _jumpAction;
-
         private CharacterController _controller;
         
-        [SerializeField] private UnityEvent<Vector3> _turnEvent;
         private bool _sliding;
+        
+        [SerializeField] private UnityEvent<Vector3> _turnEvent;
+        [SerializeField] private UnityEvent<int> _gameOverEvent;
+        [SerializeField] private UnityEvent<int> _scoreUpdateEvent;
 
         private void Awake()
         {
@@ -70,6 +76,16 @@ namespace EndlessRunner.Player
 
         private void Update()
         {
+            if (IsGrounded(20f) == false)
+            {
+                GameOver();
+                return;
+            }
+            
+            // Score functionality
+            _score += _scoreMultiplier * Time.deltaTime;
+            _scoreUpdateEvent?.Invoke((int)_score);
+            
             _controller.Move(transform.forward * _playerSpeed * Time.deltaTime);
             if (IsGrounded() && _playerVelocity.y < 0)
             {
@@ -85,6 +101,7 @@ namespace EndlessRunner.Player
             Vector3? turnPosition = CheckTurn(context.ReadValue<float>());
             if (!turnPosition.HasValue)
             {
+                GameOver();
                 return;
             }
             Vector3 targetDirection = Quaternion.AngleAxis(90 * context.ReadValue<float>(), Vector3.up) * _movementDirection;
@@ -175,6 +192,21 @@ namespace EndlessRunner.Player
             }
             
             return false;
+        }
+
+        private void GameOver()
+        {
+            Debug.Log("Game Over");
+            _gameOverEvent?.Invoke((int)_score);
+            gameObject.SetActive(false);
+        }
+
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            if (((1 << hit.collider.gameObject.layer) & _obstacleLayer) != 0)
+            {
+                GameOver();
+            }
         }
     }
 }
